@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  tennis-betting:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: tennis-betting-ml
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+    command: python scripts/daily_workflow.py
+  
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: tennis-betting-dashboard
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data:ro
+      - ./models:/app/models:ro
+    command: streamlit run dashboard/app.py --server.port=8501 --server.address=0.0.0.0

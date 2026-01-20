@@ -1,0 +1,37 @@
+{
+  "models": [
+    {
+      "version": "v20260117_095342",
+      "path": "C:\\Users\\Carlos\\Documents\\Data Analitycs\\Tennis iterations\\TENNIS 4.0\\models\\xgboost_model",
+      "metrics": {
+        "train_logloss": 0.5456764684883507,
+        "train_brier": 0.18522715943634963,
+        "train_auc": 0.8127912733030738,
+        "train_accuracy": 0.7055176880609444,
+        "eval_logloss": 0.4214850129499742,
+        "eval_brier": 0.1414843202896729,
+        "eval_auc": 0.8613740476204259,
+        "eval_accuracy": 0.7722933736377376
+      },
+      "description": "Trained on data up to 2024-01-01",
+      "created_at": "2026-01-17T09:53:42.682818"
+    },
+    {
+      "version": "v20260120_131034",
+      "path": "models\\xgboost_model",
+      "metrics": {
+        "train_logloss": 0.500753687314427,
+        "train_brier": 0.16863679689537703,
+        "train_auc": 0.8303958425897076,
+        "train_accuracy": 0.7291997406256289,
+        "eval_logloss": 0.4086053404635293,
+        "eval_brier": 0.13597717097092107,
+        "eval_auc": 0.8694160007043537,
+        "eval_accuracy": 0.7744120853449619
+      },
+      "description": "Trained on data up to 2025-01-01",
+      "created_at": "2026-01-20T13:10:34.849824"
+    }
+  ],
+  "active_model": "v20260120_131034"
+}
