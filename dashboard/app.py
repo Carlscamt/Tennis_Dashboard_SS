@@ -531,6 +531,83 @@ with st.sidebar:
             with st.expander("Details"):
                 st.code(traceback.format_exc())
     
+    # Update Player History button
+    if st.button("📊 Update Player History", use_container_width=True, help="Fetch match history & rebuild dataset"):
+        progress = st.progress(0, text="Starting player update...")
+        
+        try:
+            # Step 1: Load upcoming matches to get player IDs
+            progress.progress(5, text="📋 Loading upcoming matches...")
+            
+            from scripts.scrape_future import get_active_player_ids
+            import polars as pl
+            
+            future_path = DATA_DIR / "future" / "upcoming_matches_latest.parquet"
+            if not future_path.exists():
+                st.warning("No upcoming matches found. Fetch matches first.")
+                progress.empty()
+            else:
+                future_df = pl.read_parquet(future_path)
+                active_ids = get_active_player_ids(future_df)
+                st.caption(f"Found {len(active_ids)} players to update")
+                
+                # Step 2: Fetch new match data
+                progress.progress(15, text=f"📡 Fetching history for {len(active_ids)} players...")
+                
+                from scripts.update_active_players import update_player_data, get_latest_data
+                
+                existing_df = get_latest_data()
+                updated_df = update_player_data(
+                    player_ids=list(active_ids),
+                    existing_df=existing_df,
+                    max_pages=3,
+                    parallel_workers=3,
+                    smart_update=True
+                )
+                
+                # Step 3: Save raw data
+                progress.progress(50, text="💾 Saving raw data...")
+                
+                if updated_df is not None and len(updated_df) > 0:
+                    RAW_DIR = DATA_DIR / "raw"
+                    RAW_DIR.mkdir(parents=True, exist_ok=True)
+                    output_path = RAW_DIR / f"atp_matches_updated_{datetime.now().strftime('%Y%m%d_%H%M%S')}.parquet"
+                    updated_df.write_parquet(output_path)
+                    st.caption(f"Saved {len(updated_df):,} matches to raw data")
+                    
+                    # Step 4: Run data pipeline to combine all data
+                    progress.progress(60, text="⚙️ Running data pipeline (combining datasets)...")
+                    
+                    from scripts.run_pipeline import run_data_pipeline
+                    from config import RAW_DATA_DIR, PROCESSED_DATA_DIR
+                    
+                    run_data_pipeline(RAW_DATA_DIR, PROCESSED_DATA_DIR)
+                    
+                    # Step 5: Regenerate predictions with new data
+                    progress.progress(85, text="🎯 Regenerating predictions...")
+                    
+                    try:
+                        from scripts.predict_upcoming import main as predict_main
+                        predict_main()
+                    except Exception as pred_err:
+                        st.warning(f"Prediction update: {pred_err}")
+                    
+                    progress.progress(100, text="✅ Complete!")
+                    st.cache_data.clear()
+                    st.success(f"✅ Updated {len(active_ids)} players, rebuilt dataset, regenerated predictions!")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    progress.progress(100, text="✅ No new data")
+                    st.info("All players already up to date!")
+                    
+        except Exception as e:
+            progress.empty()
+            st.error(f"Error: {e}")
+            import traceback
+            with st.expander("Details"):
+                st.code(traceback.format_exc())
+    
     # Model info
     model_info = load_model_info()
     if model_info and model_info.get("active_model"):
