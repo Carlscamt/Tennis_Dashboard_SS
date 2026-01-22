@@ -180,13 +180,13 @@ def compare_strategies(
     return pl.DataFrame(results)
 
 
-def main():
+def main(args_list=None):
     parser = argparse.ArgumentParser(description="Tennis Betting Backtest")
     parser.add_argument("--start-date", type=str, default="2024-01-01")
     parser.add_argument("--end-date", type=str, default=None)
     parser.add_argument("--bankroll", type=float, default=1000.0)
     parser.add_argument("--compare", action="store_true", help="Compare strategies")
-    args = parser.parse_args()
+    args = parser.parse_args(args_list)
     
     data_path = PROCESSED_DATA_DIR / "features_dataset.parquet"
     

@@ -512,12 +512,31 @@ def update_player_data(
     
     new_df = pl.DataFrame(new_records)
     
-    if existing_df is not None and len(existing_df) > 0:
-        combined = pl.concat([existing_df, new_df], how="diagonal")
-        combined = combined.unique(subset=["event_id", "player_id"])
-        combined = combined.sort("start_timestamp")
-    else:
-        combined = new_df.sort("start_timestamp")
+    # Use schema utilities for smart merging
+    try:
+        from src.schema import merge_datasets, enforce_schema, SchemaValidator
+        
+        if existing_df is not None and len(existing_df) > 0:
+            # Smart merge with schema utilities (prefer new data, prefer odds)
+            combined = merge_datasets(existing_df, new_df, prefer_new=True)
+        else:
+            combined = new_df.sort("start_timestamp")
+        
+        # Enforce schema
+        combined = enforce_schema(combined, data_type="historical")
+        
+        # Validate
+        validator = SchemaValidator()
+        validator.validate_and_log(combined)
+        
+    except ImportError:
+        # Fallback to basic merge
+        if existing_df is not None and len(existing_df) > 0:
+            combined = pl.concat([existing_df, new_df], how="diagonal")
+            combined = combined.unique(subset=["event_id", "player_id"])
+            combined = combined.sort("start_timestamp")
+        else:
+            combined = new_df.sort("start_timestamp")
     
     # Clear checkpoint after successful completion
     checkpoint.clear()

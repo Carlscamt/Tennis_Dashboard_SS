@@ -53,12 +53,21 @@ def run_data_pipeline(raw_dir: Path, output_dir: Path) -> pl.LazyFrame:
     # Prepare base dataset
     df = prepare_base_dataset(df)
     
+    # CRITICAL: Deduplicate to prevent data leakage via rolling windows
+    # Each event_id + player_id combination should appear exactly once
+    # Prefer rows WITH odds data (more complete)
+    df = df.with_columns([
+        pl.col("odds_player").is_not_null().cast(pl.Int8).alias("_has_odds")
+    ]).sort(["start_timestamp", "_has_odds"], descending=[False, True])  # Sort by time, then odds first
+    df = df.unique(subset=["event_id", "player_id"], keep="first", maintain_order=True)
+    df = df.drop("_has_odds")
+    
     # Validate temporal order
     validate_temporal_order(df)
     
     # Get stats
     stats = get_dataset_stats(df)
-    logger.info(f"Loaded {stats['total_matches']:,} matches")
+    logger.info(f"Loaded {stats['total_matches']:,} matches (after deduplication)")
     logger.info(f"Date range: {stats['earliest_match']} to {stats['latest_match']}")
     if "odds_coverage" in stats:
         logger.info(f"Odds coverage: {stats['odds_coverage']:.1%}")
@@ -178,11 +187,66 @@ def run_training_pipeline(
 
 def main():
     parser = argparse.ArgumentParser(description="Tennis Betting ML Pipeline")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    
+    # Legacy arguments (for backward compatibility)
     parser.add_argument("--data-only", action="store_true", help="Run data pipeline only")
     parser.add_argument("--train-only", action="store_true", help="Run training only")
     parser.add_argument("--cutoff", type=str, help="Train/test cutoff date (YYYY-MM-DD)")
+    
+    # New commands
+    predict_parser = subparsers.add_parser("predict", help="Get predictions for upcoming matches")
+    predict_parser.add_argument("--days", type=int, default=7, help="Days ahead to look")
+    predict_parser.add_argument("--min-odds", type=float, default=1.5, help="Minimum odds")
+    predict_parser.add_argument("--max-odds", type=float, default=3.0, help="Maximum odds")
+    
+    daily_parser = subparsers.add_parser("daily", help="Run daily update workflow")
+    daily_parser.add_argument("--skip-scrape", action="store_true", help="Skip scraping future matches")
+    
+    refresh_parser = subparsers.add_parser("refresh", help="Full data refresh and retrain")
+    refresh_parser.add_argument("--no-retrain", action="store_true", help="Skip model retraining")
+    
     args = parser.parse_args()
     
+    # Handle new commands
+    if args.command == "predict":
+        from src.pipeline import TennisPipeline
+        pipeline = TennisPipeline()
+        predictions = pipeline.predict_upcoming(
+            days=args.days,
+            min_odds=args.min_odds,
+            max_odds=args.max_odds
+        )
+        
+        # Show summary
+        value_bets = predictions.filter(pl.col("edge") > 0.05) if "edge" in predictions.columns else predictions
+        logger.info(f"Total predictions: {len(predictions)}")
+        logger.info(f"Value bets (>5% edge): {len(value_bets)}")
+        
+        if len(value_bets) > 0:
+            logger.info("\nTop 5 Value Bets:")
+            top5 = value_bets.head(5)
+            for row in top5.iter_rows(named=True):
+                logger.info(f"  {row.get('player_name', 'N/A')} vs {row.get('opponent_name', 'N/A')}")
+                logger.info(f"    Odds: {row.get('odds_player', 'N/A'):.2f} | Prob: {row.get('model_prob', 0):.1%} | Edge: {row.get('edge', 0):.1%}")
+        
+        return
+    
+    elif args.command == "daily":
+        from src.pipeline import TennisPipeline
+        pipeline = TennisPipeline()
+        results = pipeline.daily_update(scrape_future=not args.skip_scrape)
+        logger.info(f"Daily update complete: {results}")
+        return
+    
+    elif args.command == "refresh":
+        from src.pipeline import TennisPipeline
+        pipeline = TennisPipeline()
+        results = pipeline.refresh_all(retrain=not args.no_retrain)
+        logger.info(f"Refresh complete: {results}")
+        return
+    
+    # Legacy behavior (backward compatibility)
     cutoff = None
     if args.cutoff:
         cutoff = date.fromisoformat(args.cutoff)
@@ -197,7 +261,7 @@ def main():
     elif args.data_only:
         run_data_pipeline(RAW_DATA_DIR, PROCESSED_DATA_DIR)
     else:
-        # Full pipeline
+        # Full pipeline (default when no command given)
         run_data_pipeline(RAW_DATA_DIR, PROCESSED_DATA_DIR)
         data_path = PROCESSED_DATA_DIR / "features_dataset.parquet"
         run_training_pipeline(data_path, MODELS_DIR, cutoff)
@@ -207,3 +271,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

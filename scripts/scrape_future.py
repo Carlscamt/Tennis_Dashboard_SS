@@ -445,9 +445,24 @@ def scrape_future_matches(days_ahead: int = 7, resume: bool = True) -> pl.DataFr
     
     df = pl.DataFrame(all_records)
     
-    # Remove duplicates
+    # Remove duplicates and apply schema
     original_count = len(df)
-    df = df.unique(subset=["event_id"], maintain_order=True)
+    try:
+        from src.schema import deduplicate_matches, enforce_schema, SchemaValidator
+        
+        # Deduplicate (event_id only for future matches since no player perspective)
+        df = df.unique(subset=["event_id"], maintain_order=True)
+        
+        # Enforce schema with data_type = "upcoming"
+        df = enforce_schema(df, data_type="upcoming")
+        
+        # Validate
+        validator = SchemaValidator()
+        validator.validate_and_log(df, data_type="upcoming")
+        
+    except ImportError:
+        df = df.unique(subset=["event_id"], maintain_order=True)
+    
     if len(df) < original_count:
         print(f"  Removed {original_count - len(df)} duplicates")
     

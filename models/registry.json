@@ -31,7 +31,55 @@
       },
       "description": "Trained on data up to 2025-01-01",
       "created_at": "2026-01-20T13:10:34.849824"
+    },
+    {
+      "version": "v20260121_191037",
+      "path": "models\\xgboost_model",
+      "metrics": {
+        "train_logloss": 0.2621875235607704,
+        "train_brier": 0.08912795849533739,
+        "train_auc": 0.9511993880871167,
+        "train_accuracy": 0.8581123228888904,
+        "eval_logloss": 0.17966931517752138,
+        "eval_brier": 0.059785454479622885,
+        "eval_auc": 0.9746415068906643,
+        "eval_accuracy": 0.9022613986419571
+      },
+      "description": "Trained on data up to 2025-01-01",
+      "created_at": "2026-01-21T19:10:37.159722"
+    },
+    {
+      "version": "v20260121_192049",
+      "path": "models\\xgboost_model",
+      "metrics": {
+        "train_logloss": 0.6373101256436665,
+        "train_brier": 0.22301103323221677,
+        "train_auc": 0.7160419466502911,
+        "train_accuracy": 0.6337805983680871,
+        "eval_logloss": 0.6682087769376217,
+        "eval_brier": 0.23771382638542926,
+        "eval_auc": 0.5791800028270353,
+        "eval_accuracy": 0.5963190478475788
+      },
+      "description": "Trained on data up to 2025-01-01",
+      "created_at": "2026-01-21T19:20:49.712430"
+    },
+    {
+      "version": "v20260121_192146",
+      "path": "models\\xgboost_model",
+      "metrics": {
+        "train_logloss": 0.6312917671898589,
+        "train_brier": 0.22065635075544418,
+        "train_auc": 0.7056510191743612,
+        "train_accuracy": 0.6427561196736175,
+        "eval_logloss": 0.6638581871086902,
+        "eval_brier": 0.23569745824439925,
+        "eval_auc": 0.5927584953343843,
+        "eval_accuracy": 0.6015741229543601
+      },
+      "description": "Trained on data up to 2025-01-01",
+      "created_at": "2026-01-21T19:21:46.234614"
     }
   ],
-  "active_model": "v20260120_131034"
+  "active_model": "v20260121_192146"
 }

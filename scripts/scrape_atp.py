@@ -540,7 +540,25 @@ def run_scraper(
         return pl.DataFrame()
     
     df = pl.DataFrame(all_records)
-    df = df.unique(subset=["event_id", "player_id"])
+    
+    # Use schema utilities for deduplication (prefer rows with odds)
+    try:
+        from src.schema import deduplicate_matches, enforce_schema, SchemaValidator
+        
+        # Deduplicate with odds preference
+        df = deduplicate_matches(df.lazy(), prefer_with_odds=True).collect()
+        
+        # Enforce schema
+        df = enforce_schema(df, data_type="historical")
+        
+        # Validate
+        validator = SchemaValidator()
+        validator.validate_and_log(df, data_type="historical")
+        
+    except ImportError:
+        # Fallback to basic dedup if schema module not available
+        df = df.unique(subset=["event_id", "player_id"])
+    
     df = df.sort("start_timestamp")
     
     # Save final output
